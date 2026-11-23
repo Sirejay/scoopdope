@@ -58,10 +58,18 @@ export class QuizzesService {
   }
 
   async getQuiz(id: string) {
-    return this.quizRepo.findOne({
+    const quiz = await this.quizRepo.findOne({
       where: { id },
       relations: ['questions', 'questions.answers'],
     });
+    if (!quiz) return quiz;
+    return {
+      ...quiz,
+      questions: quiz.questions.map((q) => ({
+        ...q,
+        answers: q.answers.map(({ isCorrect: _ic, explanation: _ex, correctAnswer: _ca, ...safe }) => safe),
+      })),
+    };
   }
 
   /**
@@ -83,7 +91,9 @@ export class QuizzesService {
       ...quiz,
       questions: quiz.questions.map((question) => ({
         ...question,
-        answers: seededShuffle(question.answers, `${attemptId}:${question.id}`),
+        answers: seededShuffle(question.answers, `${attemptId}:${question.id}`).map(
+          ({ isCorrect: _ic, explanation: _ex, correctAnswer: _ca, ...safe }) => safe,
+        ),
       })),
     };
   }
@@ -154,6 +164,7 @@ export class QuizzesService {
           questionId: question.id,
           userAnswer: answer.answer,
           correctAnswer: correctAnswer?.text,
+          explanation: correctAnswer?.explanation ?? null,
           isCorrect,
           points: attemptAnswer.points,
         });

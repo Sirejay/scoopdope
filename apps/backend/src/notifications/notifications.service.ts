@@ -270,6 +270,33 @@ export class NotificationsService {
 
   async markAsRead(id: string, userId: string): Promise<Notification> {
     const notification = await this.repo.findOne({ where: { id } });
-    if (!notification) throw ne
+    if (!notification) throw new NotFoundException('Notification not found');
+    if (notification.userId !== userId) throw new ForbiddenException('Access denied');
 
-/* … truncated 1152 chars — edit only what you need near the top … */
+    notification.isRead = true;
+    notification.readAt = notification.readAt ?? new Date();
+    return this.repo.save(notification);
+  }
+
+  async markAllAsRead(userId: string): Promise<{ updated: number }> {
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ isRead: true, readAt: () => `COALESCE("readAt", NOW())` })
+      .where('userId = :userId AND isRead = false', { userId })
+      .execute();
+    return { updated: result.affected ?? 0 };
+  }
+
+  async onEnrollmentCreated(userId: string, courseName: string): Promise<Notification> {
+    return this.create(userId, NotificationType.ENROLLMENT, `You have been enrolled in "${courseName}".`);
+  }
+
+  async onCredentialIssued(userId: string, courseName: string): Promise<Notification> {
+    return this.create(userId, NotificationType.CREDENTIAL_ISSUED, `Your credential for "${courseName}" has been issued.`);
+  }
+
+  async onProgressCompleted(userId: string, courseName: string): Promise<Notification> {
+    return this.create(userId, NotificationType.COMPLETION, `You have completed "${courseName}". Great job!`);
+  }
+}

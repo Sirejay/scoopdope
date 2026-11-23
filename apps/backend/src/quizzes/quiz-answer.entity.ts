@@ -28,4 +28,10 @@ export class QuizAnswer {
 
   @Column({ default: 0 })
   order: number;
+
+  @Column({ type: 'text', nullable: true })
+  explanation: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  correctAnswer: string | null;
 }
